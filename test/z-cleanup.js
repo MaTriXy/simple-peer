@@ -1,13 +1,12 @@
 // This test file runs after all the others. This is where we can run the cleanup
-// code that is required for the electron-webrtc
+// code that is required
 
-var common = require('./common')
-var test = require('tape')
+const test = require('tape')
 
 test('cleanup', function (t) {
-  // Shut down the electron-webrtc daemon
-  if (process.env.WRTC === 'electron-webrtc') {
-    common.wrtc.close()
-  }
+  // Shut down the process and any daemons
   t.end()
+  if (process && process.exit) {
+    process.exit(0)
+  }
 })

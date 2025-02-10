@@ -1,8 +1,8 @@
-var common = require('./common')
-var Peer = require('../')
-var test = require('tape')
+const common = require('./common')
+const Peer = require('../')
+const test = require('tape')
 
-var config
+let config
 test('get config', function (t) {
   common.getConfig(function (err, _config) {
     if (err) return t.fail(err)
@@ -14,8 +14,8 @@ test('get config', function (t) {
 test('data send/receive string {objectMode: true}', function (t) {
   t.plan(6)
 
-  var peer1 = new Peer({ config: config, initiator: true, wrtc: common.wrtc, objectMode: true })
-  var peer2 = new Peer({ config: config, wrtc: common.wrtc, objectMode: true })
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc, objectMode: true })
+  const peer2 = new Peer({ config, wrtc: common.wrtc, objectMode: true })
   peer1.on('signal', function (data) {
     peer2.signal(data)
   })
@@ -38,8 +38,10 @@ test('data send/receive string {objectMode: true}', function (t) {
         t.equal(typeof data, 'string', 'data is a string')
         t.equal(data, 'this is another string', 'got correct message')
 
-        peer1.destroy(function () { t.pass('peer1 destroyed') })
-        peer2.destroy(function () { t.pass('peer2 destroyed') })
+        peer1.on('close', function () { t.pass('peer1 destroyed') })
+        peer1.destroy()
+        peer2.on('close', function () { t.pass('peer2 destroyed') })
+        peer2.destroy()
       })
     })
   }
@@ -48,8 +50,8 @@ test('data send/receive string {objectMode: true}', function (t) {
 test('data send/receive Buffer {objectMode: true}', function (t) {
   t.plan(6)
 
-  var peer1 = new Peer({ config: config, initiator: true, wrtc: common.wrtc, objectMode: true })
-  var peer2 = new Peer({ config: config, wrtc: common.wrtc, objectMode: true })
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc, objectMode: true })
+  const peer2 = new Peer({ config, wrtc: common.wrtc, objectMode: true })
   peer1.on('signal', function (data) {
     peer2.signal(data)
   })
@@ -72,8 +74,10 @@ test('data send/receive Buffer {objectMode: true}', function (t) {
         t.ok(Buffer.isBuffer(data), 'data is a Buffer')
         t.deepEqual(data, Buffer.from('this is another Buffer'), 'got correct message')
 
-        peer1.destroy(function () { t.pass('peer1 destroyed') })
-        peer2.destroy(function () { t.pass('peer2 destroyed') })
+        peer1.on('close', function () { t.pass('peer1 destroyed') })
+        peer1.destroy()
+        peer2.on('close', function () { t.pass('peer2 destroyed') })
+        peer2.destroy()
       })
     })
   }
@@ -82,8 +86,8 @@ test('data send/receive Buffer {objectMode: true}', function (t) {
 test('data send/receive Uint8Array {objectMode: true}', function (t) {
   t.plan(6)
 
-  var peer1 = new Peer({ config: config, initiator: true, wrtc: common.wrtc, objectMode: true })
-  var peer2 = new Peer({ config: config, wrtc: common.wrtc, objectMode: true })
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc, objectMode: true })
+  const peer2 = new Peer({ config, wrtc: common.wrtc, objectMode: true })
   peer1.on('signal', function (data) {
     peer2.signal(data)
   })
@@ -108,8 +112,10 @@ test('data send/receive Uint8Array {objectMode: true}', function (t) {
         t.ok(Buffer.isBuffer(data), 'data is a Buffer')
         t.deepEqual(data, Buffer.from([1, 2, 3]), 'got correct message')
 
-        peer1.destroy(function () { t.pass('peer1 destroyed') })
-        peer2.destroy(function () { t.pass('peer2 destroyed') })
+        peer1.on('close', function () { t.pass('peer1 destroyed') })
+        peer1.destroy()
+        peer2.on('close', function () { t.pass('peer2 destroyed') })
+        peer2.destroy()
       })
     })
   }
@@ -118,8 +124,8 @@ test('data send/receive Uint8Array {objectMode: true}', function (t) {
 test('data send/receive ArrayBuffer {objectMode: true}', function (t) {
   t.plan(6)
 
-  var peer1 = new Peer({ config: config, initiator: true, wrtc: common.wrtc, objectMode: true })
-  var peer2 = new Peer({ config: config, wrtc: common.wrtc, objectMode: true })
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc, objectMode: true })
+  const peer2 = new Peer({ config, wrtc: common.wrtc, objectMode: true })
   peer1.on('signal', function (data) {
     peer2.signal(data)
   })
@@ -142,8 +148,10 @@ test('data send/receive ArrayBuffer {objectMode: true}', function (t) {
         t.ok(Buffer.isBuffer(data), 'data is a Buffer')
         t.deepEqual(data, Buffer.from([1, 2, 3]), 'got correct message')
 
-        peer1.destroy(function () { t.pass('peer1 destroyed') })
-        peer2.destroy(function () { t.pass('peer2 destroyed') })
+        peer1.on('close', function () { t.pass('peer1 destroyed') })
+        peer1.destroy()
+        peer2.on('close', function () { t.pass('peer2 destroyed') })
+        peer2.destroy()
       })
     })
   }

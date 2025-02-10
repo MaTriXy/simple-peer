@@ -1,8 +1,8 @@
-var common = require('./common')
-var Peer = require('../')
-var test = require('tape')
+const common = require('./common')
+const Peer = require('../')
+const test = require('tape')
 
-var config
+let config
 test('get config', function (t) {
   common.getConfig(function (err, _config) {
     if (err) return t.fail(err)
@@ -20,7 +20,7 @@ test('create peer without options', function (t) {
   t.plan(1)
 
   if (process.browser) {
-    var peer
+    let peer
     t.doesNotThrow(function () {
       peer = new Peer()
     })
@@ -30,29 +30,73 @@ test('create peer without options', function (t) {
   }
 })
 
+test('can detect error when RTCPeerConstructor throws', function (t) {
+  t.plan(1)
+
+  const peer = new Peer({ wrtc: { RTCPeerConnection: null } })
+  peer.once('error', function () {
+    t.pass('got error event')
+    peer.destroy()
+  })
+})
+
 test('signal event gets emitted', function (t) {
   t.plan(2)
 
-  var peer = new Peer({ config: config, initiator: true, wrtc: common.wrtc })
+  const peer = new Peer({ config, initiator: true, wrtc: common.wrtc })
   peer.once('signal', function () {
     t.pass('got signal event')
-    peer.destroy(function () { t.pass('peer destroyed') })
+    peer.on('close', function () { t.pass('peer destroyed') })
+    peer.destroy()
   })
+})
+
+test('signal event does not get emitted by non-initiator', function (t) {
+  const peer = new Peer({ config, initiator: false, wrtc: common.wrtc })
+  peer.once('signal', function () {
+    t.fail('got signal event')
+    peer.on('close', function () { t.pass('peer destroyed') })
+    peer.destroy()
+  })
+
+  setTimeout(() => {
+    t.pass('did not get signal after 1000ms')
+    t.end()
+  }, 1000)
+})
+
+test('signal event does not get emitted by non-initiator with stream', function (t) {
+  const peer = new Peer({
+    config,
+    stream: common.getMediaStream(),
+    initiator: false,
+    wrtc: common.wrtc
+  })
+  peer.once('signal', function () {
+    t.fail('got signal event')
+    peer.on('close', function () { t.pass('peer destroyed') })
+    peer.destroy()
+  })
+
+  setTimeout(() => {
+    t.pass('did not get signal after 1000ms')
+    t.end()
+  }, 1000)
 })
 
 test('data send/receive text', function (t) {
   t.plan(10)
 
-  var peer1 = new Peer({ config: config, initiator: true, wrtc: common.wrtc })
-  var peer2 = new Peer({ config: config, wrtc: common.wrtc })
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc })
+  const peer2 = new Peer({ config, wrtc: common.wrtc })
 
-  var numSignal1 = 0
+  let numSignal1 = 0
   peer1.on('signal', function (data) {
     numSignal1 += 1
     peer2.signal(data)
   })
 
-  var numSignal2 = 0
+  let numSignal2 = 0
   peer2.on('signal', function (data) {
     numSignal2 += 1
     peer1.signal(data)
@@ -69,18 +113,6 @@ test('data send/receive text', function (t) {
     t.equal(peer1.initiator, true, 'peer1 is initiator')
     t.equal(peer2.initiator, false, 'peer2 is not initiator')
 
-    // TODO: re-enable after Chrome 58 is released!
-
-    // t.equal(typeof peer1.localAddress, 'string')
-    // t.equal(typeof peer1.localPort, 'number')
-    // t.equal(typeof peer2.localAddress, 'string')
-    // t.equal(typeof peer2.localPort, 'number')
-
-    // t.ok(typeof peer1.remoteFamily === 'string')
-    // t.ok(peer1.remoteFamily.indexOf('IPv') === 0)
-    // t.ok(typeof peer2.remoteFamily === 'string')
-    // t.ok(peer2.remoteFamily.indexOf('IPv') === 0)
-
     peer1.send('sup peer2')
     peer2.on('data', function (data) {
       t.ok(Buffer.isBuffer(data), 'data is Buffer')
@@ -91,8 +123,10 @@ test('data send/receive text', function (t) {
         t.ok(Buffer.isBuffer(data), 'data is Buffer')
         t.equal(data.toString(), 'sup peer1', 'got correct message')
 
-        peer1.destroy(function () { t.pass('peer1 destroyed') })
-        peer2.destroy(function () { t.pass('peer2 destroyed') })
+        peer1.on('close', function () { t.pass('peer1 destroyed') })
+        peer1.destroy()
+        peer2.on('close', function () { t.pass('peer2 destroyed') })
+        peer2.destroy()
       })
     })
   }
@@ -101,14 +135,16 @@ test('data send/receive text', function (t) {
 test('sdpTransform function is called', function (t) {
   t.plan(3)
 
-  var peer1 = new Peer({ config: config, initiator: true, wrtc: common.wrtc })
-  var peer2 = new Peer({ config: config, sdpTransform: sdpTransform, wrtc: common.wrtc })
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc })
+  const peer2 = new Peer({ config, sdpTransform, wrtc: common.wrtc })
 
   function sdpTransform (sdp) {
     t.equal(typeof sdp, 'string', 'got a string as SDP')
     setTimeout(function () {
-      peer1.destroy(function () { t.pass('peer1 destroyed') })
-      peer2.destroy(function () { t.pass('peer2 destroyed') })
+      peer1.on('close', function () { t.pass('peer1 destroyed') })
+      peer1.destroy()
+      peer2.on('close', function () { t.pass('peer2 destroyed') })
+      peer2.destroy()
     }, 0)
     return sdp
   }
@@ -125,15 +161,15 @@ test('sdpTransform function is called', function (t) {
 test('old constraint formats are used', function (t) {
   t.plan(3)
 
-  var constraints = {
+  const constraints = {
     mandatory: {
       OfferToReceiveAudio: true,
       OfferToReceiveVideo: true
     }
   }
 
-  var peer1 = new Peer({ config: config, initiator: true, wrtc: common.wrtc, constraints: constraints })
-  var peer2 = new Peer({ config: config, wrtc: common.wrtc, constraints: constraints })
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc, constraints })
+  const peer2 = new Peer({ config, wrtc: common.wrtc, constraints })
 
   peer1.on('signal', function (data) {
     peer2.signal(data)
@@ -145,21 +181,23 @@ test('old constraint formats are used', function (t) {
 
   peer1.on('connect', function () {
     t.pass('peers connected')
-    peer1.destroy(function () { t.pass('peer1 destroyed') })
-    peer2.destroy(function () { t.pass('peer2 destroyed') })
+    peer1.on('close', function () { t.pass('peer1 destroyed') })
+    peer1.destroy()
+    peer2.on('close', function () { t.pass('peer2 destroyed') })
+    peer2.destroy()
   })
 })
 
 test('new constraint formats are used', function (t) {
   t.plan(3)
 
-  var constraints = {
+  const constraints = {
     offerToReceiveAudio: true,
     offerToReceiveVideo: true
   }
 
-  var peer1 = new Peer({ config: config, initiator: true, wrtc: common.wrtc, constraints: constraints })
-  var peer2 = new Peer({ config: config, wrtc: common.wrtc, constraints: constraints })
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc, constraints })
+  const peer2 = new Peer({ config, wrtc: common.wrtc, constraints })
 
   peer1.on('signal', function (data) {
     peer2.signal(data)
@@ -171,7 +209,66 @@ test('new constraint formats are used', function (t) {
 
   peer1.on('connect', function () {
     t.pass('peers connected')
-    peer1.destroy(function () { t.pass('peer1 destroyed') })
-    peer2.destroy(function () { t.pass('peer2 destroyed') })
+    peer1.on('close', function () { t.pass('peer1 destroyed') })
+    peer1.destroy()
+    peer2.on('close', function () { t.pass('peer2 destroyed') })
+    peer2.destroy()
   })
+})
+
+test('ensure remote address and port are available right after connection', function (t) {
+  if (common.isBrowser('safari') || common.isBrowser('ios')) {
+    t.pass('Skip on Safari and iOS which do not support modern getStats() calls')
+    t.end()
+    return
+  }
+  if (common.isBrowser('chrome') || common.isBrowser('edge')) {
+    t.pass('Skip on Chrome and Edge which hide local IPs with mDNS')
+    t.end()
+    return
+  }
+
+  t.plan(7)
+
+  const peer1 = new Peer({ config, initiator: true, wrtc: common.wrtc })
+  const peer2 = new Peer({ config, wrtc: common.wrtc })
+
+  peer1.on('signal', function (data) {
+    peer2.signal(data)
+  })
+
+  peer2.on('signal', function (data) {
+    peer1.signal(data)
+  })
+
+  peer1.on('connect', function () {
+    t.pass('peers connected')
+
+    t.ok(peer1.remoteAddress, 'peer1 remote address is present')
+    t.ok(peer1.remotePort, 'peer1 remote port is present')
+
+    peer2.on('connect', function () {
+      t.ok(peer2.remoteAddress, 'peer2 remote address is present')
+      t.ok(peer2.remotePort, 'peer2 remote port is present')
+
+      peer1.on('close', function () { t.pass('peer1 destroyed') })
+      peer1.destroy()
+      peer2.on('close', function () { t.pass('peer2 destroyed') })
+      peer2.destroy()
+    })
+  })
+})
+
+test('ensure iceStateChange fires when connection failed', (t) => {
+  t.plan(1)
+  const peer = new Peer({ config, initiator: true, wrtc: common.wrtc })
+
+  peer.on('iceStateChange', (connectionState, gatheringState) => {
+    t.pass('got iceStateChange')
+    t.end()
+  })
+
+  // simulate concurrent iceConnectionStateChange and destroy()
+  peer.destroy()
+  peer._pc.oniceconnectionstatechange()
 })
